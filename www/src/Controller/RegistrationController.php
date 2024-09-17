@@ -17,7 +17,8 @@ class RegistrationController extends AbstractController
     public function register(
         Request $request,
         UserPasswordHasherInterface $userPasswordHasher,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+       
     ): Response {
         $data = json_decode($request->getContent(), true);
         if (!$data || !isset($data['email'], $data['name'], $data['surname'], $data['password'])) {
@@ -39,6 +40,11 @@ class RegistrationController extends AbstractController
         $entityManager->persist($user);
         $entityManager->flush();
 
-        return $this->json(['message' => 'User registered successfully'], Response::HTTP_CREATED);
+
+     
+
+        return $this->json([
+            'message' => 'User registered successfully']
+          );
     }
 }

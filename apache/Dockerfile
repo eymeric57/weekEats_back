@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 RUN docker-php-ext-install gd
 RUN docker-php-ext-install intl
+RUN docker 
 
 # Installation de Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

@@ -1,55 +1,60 @@
 <?php
+
 namespace App\Controller;
 
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
-use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 
 class LoginController extends AbstractController
 {
-    #[Route('/login', name: 'login', methods: ['POST'])]
-    public function login(Request $request, JWTTokenManagerInterface $jwtManager, UserProviderInterface $userProvider): JsonResponse
-    {
-        // Récupérer les données de la requête
+    #[Route('/login', name: 'login', methods: ['POST'])] // Route for login
+    public function login(
+        Request $request,
+        UserProviderInterface $userProvider,
+        UserPasswordHasherInterface $passwordHasher
+    ): JsonResponse {
+        // Retrieve request data
         $data = json_decode($request->getContent(), true);
         $useremail = $data['email'] ?? null;
         $password = $data['password'] ?? null;
 
-        // Vérifiez si l'utilisateur est déjà connecté
-        if ($this->getUser()) {
+        if (!$useremail || !$password) {
             return new JsonResponse([
-                'success' => true,
-                'id' => $this->getUser()->getId(),
-                'email' => $this->getUser()->getEmail(),
-                'name' => $this->getUser()->getName(),
-                'surname' => $this->getUser()->getSurname(),
-                'message' => 'Utilisateur déjà en session'
-            ]);
+                'success' => false,
+                'message' => 'Email and password required'
+            ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        // Vérifiez si l'utilisateur existe
-        $user = $userProvider->loadUserByIdentifier($useremail);
-
-        // Vérifiez les informations d'identification
-        if (!$user || !password_verify($password, $user->getPassword())) {
-            throw new AuthenticationException('Invalid credentials');
+        // Load the user by their email
+        try {
+            $user = $userProvider->loadUserByIdentifier($useremail);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'User not found'
+            ], JsonResponse::HTTP_UNAUTHORIZED);
         }
 
-        // Authentification réussie, générez le token JWT
-        $token = $jwtManager->create($user);
+        // Verify credentials
+        if (!$passwordHasher->isPasswordValid($user, $password)) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Invalid credentials'
+            ], JsonResponse::HTTP_UNAUTHORIZED);
+        }
 
+        // Return JSON response with user details
         return new JsonResponse([
             'success' => true,
-            'token' => $token,
             'id' => $user->getId(),
             'email' => $user->getEmail(),
             'name' => $user->getName(),
             'surname' => $user->getSurname(),
-            'message' => 'Connexion réussie'
+            'message' => 'Login successful'
         ]);
     }
 }
